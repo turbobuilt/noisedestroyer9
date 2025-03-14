@@ -1,0 +1,7 @@
+*.mp3
+*.ogg
+*.env
+*.png
+temp_cache
+runs/
+new_data/
