@@ -157,11 +157,11 @@ def main():
             # if cuda is available then use autocast
             if args.device == 'cuda':
                 with autocast():
-                    # Feed through model
-                    out = model(x)
+                    # Feed through model with both noisy and clean audio
+                    out = model(x, y=target)
                     loss = criterion(out, target)
             else:
-                out = model(x)
+                out = model(x, y=target)
                 # print('out shape', out.shape, "target shape", target.shape)
                 loss = criterion(out, target)
             

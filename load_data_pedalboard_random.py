@@ -23,7 +23,7 @@ VERBOSE_LOGGING = False
 logging_level = logging.DEBUG if VERBOSE_LOGGING else logging.INFO
 # disable completely
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.WARNING,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger("noisedestroyer")
