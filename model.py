@@ -104,8 +104,8 @@ class AudioDenoiserTransformer(nn.Module):
         mask = torch.triu(torch.ones(max_len, max_len), diagonal=1).bool()
         self.register_buffer("causal_mask", mask)
         
-    def forward(self, x, generate=False, max_new_tokens=None):
-        print(f"Input shape: {x.shape}")
+    def forward(self, x, generate=False, max_new_tokens=None, return_embeddings=False):
+        # print(f"Input shape: {x.shape}")
         # x shape should be [batch_size, length, channels]
         batch_size, seq_len, channels = x.shape
         
@@ -114,7 +114,7 @@ class AudioDenoiserTransformer(nn.Module):
         
         # First tokenize the raw audio input - tokenizer now handles permutation internally
         x_tokenized = self.audio_tokenizer(x)
-        print(f"After tokenization shape: {x_tokenized.shape}")
+        # print(f"After tokenization shape: {x_tokenized.shape}")
         
         # Ensure tensor is contiguous to avoid stride issues
         x_tokenized = x_tokenized.contiguous()
@@ -136,8 +136,19 @@ class AudioDenoiserTransformer(nn.Module):
                 x = block(x, mask=mask)
                 
             # Project back to embedding dimension
-            output = self.output_proj(x)
-            return output
+            embeddings = self.output_proj(x)
+            
+            # Return embeddings if requested (useful for training specific components)
+            if return_embeddings:
+                return embeddings
+                
+            # Otherwise, detokenize back to audio using the inverse tokenizer
+            denoised_audio = self.inverse_tokenizer(
+                embeddings, 
+                original_length=seq_len
+            )
+            
+            return denoised_audio
         else:
             # Autoregressive generation
             generated = x_tokenized
@@ -159,11 +170,20 @@ class AudioDenoiserTransformer(nn.Module):
                 # Append the predicted token to the sequence
                 generated = torch.cat([generated, next_token_logits], dim=1)
             
-            return generated
+            # Detokenize the generated sequence
+            if return_embeddings:
+                return generated
+                
+            denoised_audio = self.inverse_tokenizer(
+                generated,
+                original_length=seq_len
+            )
+            
+            return denoised_audio
     
     def denoise_audio(self, noisy_audio):
         """
-        Denoise audio in one pass or autoregressively
+        Denoise audio in one pass or autoregressively - now simplified to use forward
         """
         # Process the entire noisy audio through the model
         with torch.no_grad():
@@ -180,16 +200,8 @@ class AudioDenoiserTransformer(nn.Module):
                 if noisy_audio.shape[1] != noisy_audio.shape[2]:  # Only if clearly [batch, channels, length]
                     noisy_audio = noisy_audio.permute(0, 2, 1)
             
-            # Process through the model
-            denoised_embeddings = self(noisy_audio)
-            
-            # Reconstruct audio using inverse tokenizer (handles permutation internally)
-            denoised_audio = self.inverse_tokenizer(
-                denoised_embeddings, 
-                original_length=noisy_audio.shape[1]
-            )
-            
-            return denoised_audio
+            # Simply call forward - it now handles the complete pipeline
+            return self(noisy_audio)
             
     @staticmethod
     def get_model_size(d_model, num_layers, num_heads, d_ff, input_dim, num_tokens):

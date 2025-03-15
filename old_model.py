@@ -141,7 +141,6 @@ class ManyConvNet(nn.Module):
         # Encoder
         enc_features = []
         for encoder in self.encoders:
-            # print("x shape", x.shape)
             x = encoder(x)
             enc_features.append(x)
             x = F.max_pool1d(x, kernel_size=2)

@@ -79,9 +79,9 @@ def main():
     total_steps = -1
     start_epoch = 0
     
-    # Compile model for performance if available (PyTorch 2.0+)
-    if hasattr(torch, 'compile'):
-        model = torch.compile(model, mode="max-autotune")
+    # # Compile model for performance if available (PyTorch 2.0+)
+    # if hasattr(torch, 'compile'):
+    #     model = torch.compile(model, mode="max-autotune")
     
     # Load checkpoint if available
     checkpoints_sorted = glob.glob(f'{checkpoint_dir}/*.pt')
@@ -147,7 +147,6 @@ def main():
             # Training step
             optimizer.zero_grad()
             # if cuda is available then use autocast
-            print("x shape: ", x.shape)
             if args.device == 'cuda':
                 with autocast():
                     # Feed through model
@@ -155,6 +154,7 @@ def main():
                     loss = criterion(out, target)
             else:
                 out = model(x)
+                print('out shape', out.shape, "target shape", target.shape)
                 loss = criterion(out, target)
             
             loss.backward()

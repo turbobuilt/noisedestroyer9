@@ -470,7 +470,7 @@ if __name__ == "__main__":
             # Get a sample pair
             x, y = next(data)  # Now shape is [batch, length, channels]
             logger.debug(f"Sample {i+1}: x shape {x.shape}, y shape {y.shape}")
-            print(f"Sample {i+1}: x shape {x.shape}, y shape {y.shape}")
+            # print(f"Sample {i+1}: x shape {x.shape}, y shape {y.shape}")
             
             # Calculate the noise component
             noise = x - y
