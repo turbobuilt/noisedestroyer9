@@ -24,7 +24,7 @@ def parse_args():
                         help="Size of the model to train")
     parser.add_argument('--input_dim', type=int, default=128, 
                         help="Input feature dimension")
-    parser.add_argument('--segment_length', type=int, default=4000, 
+    parser.add_argument('--segment_length', type=int, default=32000, 
                         help="Length of audio segments for training")
     parser.add_argument('--sample_rate', type=int, default=16000, 
                         help="Audio sample rate")
@@ -70,6 +70,14 @@ def main():
         sample_rate=args.sample_rate  # Pass sample_rate to model creation
     ).to(device)
     
+    # if cuda, compile
+    if args.device == 'cuda':
+        model = torch.compile(model, mode="max-autotune")
+    # Print model param count
+    num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print(f"Model {model_name} has {num_params / 1e6:.2f}M parameters")
+    print(f"Model {model_name} is running on {args.device}")
+
     # Set up optimizer and loss function
     optimizer = torch.optim.Adam(params=model.parameters(), lr=args.lr)
     criterion = torch.nn.L1Loss()
@@ -128,7 +136,7 @@ def main():
             # Process batch - data is already batched from DataIterator
             start = timer()
 
-            print(f"Processing batch {i} of epoch {epoch}, batch shape: {x.shape}")
+            # print(f"Processing batch {i} of epoch {epoch}, batch shape: {x.shape}")
             
             # Convert numpy arrays to torch tensors and move to device
             x = torch.from_numpy(x).float().to(device)
@@ -154,7 +162,7 @@ def main():
                     loss = criterion(out, target)
             else:
                 out = model(x)
-                print('out shape', out.shape, "target shape", target.shape)
+                # print('out shape', out.shape, "target shape", target.shape)
                 loss = criterion(out, target)
             
             loss.backward()
@@ -187,19 +195,19 @@ def main():
                 for param_group in optimizer.param_groups:
                     lr = param_group['lr']
                     break
-                
-                print(f"epoch {epoch}, step: {step}, total_steps: {total_steps} "
-                      f"loss: {str(loss_item)[:8]}, lr: {str(lr)} "
-                      f"min {str(torch.min(out).item())}, max {str(torch.max(out).item())}, "
-                      f"avg {str(torch.mean(out.abs()).item())}, "
-                      f"t_min {str(torch.min(target).item())[:8]}, "
-                      f"t_max {str(torch.max(target).item())[:8]}, "
-                      f"t_avg {str(torch.mean(target.abs()).item())[:8]}")
-                
                 writer.add_scalar("loss", loss_item, total_steps)
                 writer.add_scalar("lr", lr, total_steps)
                 writer.add_scalar("min", torch.min(out).item(), total_steps)
                 writer.add_scalar("max", torch.max(out).item(), total_steps)
+                
+            print(f"epoch {epoch}, step: {step}, total_steps: {total_steps} "
+                    f"loss: {str(loss_item)[:8]}, lr: {str(lr)} "
+                    f"min {str(torch.min(out).item())}, max {str(torch.max(out).item())}, "
+                    f"avg {str(torch.mean(out.abs()).item())}, "
+                    f"t_min {str(torch.min(target).item())[:8]}, "
+                    f"t_max {str(torch.max(target).item())[:8]}, "
+                    f"t_avg {str(torch.mean(target.abs()).item())[:8]}")
+                
             
             # Save checkpoint periodically
             if step % 5000 == 0 and step != 0:
